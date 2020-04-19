@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="SSL&#x2F;TLS协议SSL&#x2F;TLS协议的基本思路是采用公钥加密法，也就是说，客户端先向服务器端索要公钥，然后用公钥加密信息，服务器收到密文后，用自己的私钥解密。 这里有两个问题  如何保证公钥不被篡改？   解决方法：将公钥放在数字证书中。只要证书是可信的，公钥就是可信的。   公钥加密计算量太大，如何减少耗用的时间？   解决方法：每一次会话（session），客户端和服务器端都生成一个”会话密钥">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HTTPS详解：TLS">
+<meta property="og:url" content="http://yoursite.com/2020/04/11/HTTPS%E8%AF%A6%E8%A7%A3%EF%BC%9ATLS/index.html">
+<meta property="og:site_name" content="我的博客">
+<meta property="og:description" content="SSL&#x2F;TLS协议SSL&#x2F;TLS协议的基本思路是采用公钥加密法，也就是说，客户端先向服务器端索要公钥，然后用公钥加密信息，服务器收到密文后，用自己的私钥解密。 这里有两个问题  如何保证公钥不被篡改？   解决方法：将公钥放在数字证书中。只要证书是可信的，公钥就是可信的。   公钥加密计算量太大，如何减少耗用的时间？   解决方法：每一次会话（session），客户端和服务器端都生成一个”会话密钥">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://www.ruanyifeng.com/blogimg/asset/201402/bg2014020502.png">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/128529-0bcae5de99b7d6e7.jpg">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/128529-aab67532c3b39353.jpg">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/128529-86995b047bdca4fb.jpg">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/128529-d490081356459e7d.jpg">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/128529-f556b00b34e1752b.jpg">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/128529-8644f5444f48f969.jpg">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/128529-4e85e83831670580.jpg">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/128529-936e08831386ec26.jpg">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/128529-98cd8557d2818a3a.jpg">
+<meta property="og:image" content="https://upload.wikimedia.org/wikipedia/commons/a/ae/SSL_handshake_with_two_way_authentication_with_certificates.svg">
+<meta property="article:published_time" content="2020-04-11T06:39:49.000Z">
+<meta property="article:modified_time" content="2020-04-19T05:33:35.526Z">
+<meta property="article:author" content="wysec">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://www.ruanyifeng.com/blogimg/asset/201402/bg2014020502.png">
+
+<link rel="canonical" href="http://yoursite.com/2020/04/11/HTTPS%E8%AF%A6%E8%A7%A3%EF%BC%9ATLS/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>HTTPS详解：TLS | 我的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">我的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/04/11/HTTPS%E8%AF%A6%E8%A7%A3%EF%BC%9ATLS/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="wysec">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="我的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          HTTPS详解：TLS
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-04-11 14:39:49" itemprop="dateCreated datePublished" datetime="2020-04-11T14:39:49+08:00">2020-04-11</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-04-19 13:33:35" itemprop="dateModified" datetime="2020-04-19T13:33:35+08:00">2020-04-19</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="SSL-TLS协议"><a href="#SSL-TLS协议" class="headerlink" title="SSL/TLS协议"></a>SSL/TLS协议</h2><p>SSL/TLS协议的基本思路是采用公钥加密法，也就是说，客户端先向服务器端索要公钥，然后用公钥加密信息，服务器收到密文后，用自己的私钥解密。</p>
+<p><strong>这里有两个问题</strong></p>
+<ol>
+<li>如何保证公钥不被篡改？</li>
+</ol>
+<blockquote>
+<p>解决方法：将公钥放在数字证书中。只要证书是可信的，公钥就是可信的。</p>
+</blockquote>
+<ol start="2">
+<li>公钥加密计算量太大，如何减少耗用的时间？</li>
+</ol>
+<blockquote>
+<p>解决方法：每一次会话（session），客户端和服务器端都生成一个”会话密钥”（session key），用它来加密信息。由于”会话密钥”是对称加密，所以运算速度非常快，而服务器公钥只用于加密”会话密钥”本身，这样就减少了加密运算的消耗时间。</p>
+</blockquote>
+<p>因此，SSL/TLS协议的基本过程是这样的：</p>
+<blockquote>
+<ol>
+<li>客户端向服务器端索要并验证公钥</li>
+<li>双方协商并生成”会话密钥”</li>
+<li>双方采用”会话密钥”进行加密通信</li>
+</ol>
+</blockquote>
+<p>上面过程的前两步，又称为”握手阶段”（handshake）。</p>
+<h2 id="握手过程"><a href="#握手过程" class="headerlink" title="握手过程"></a>握手过程</h2><p><img src="https://www.ruanyifeng.com/blogimg/asset/201402/bg2014020502.png" alt=""></p>
+<p>“握手阶段”涉及四次通信，但需要注意的是，<strong>“握手阶段”的所有通信都是明文的</strong>。</p>
+<h3 id="客户端发出请求（ClientHello）"><a href="#客户端发出请求（ClientHello）" class="headerlink" title="客户端发出请求（ClientHello）"></a>客户端发出请求（ClientHello）</h3><p>客户端（通常是浏览器）先向服务器发出加密通信的请求，这被叫做ClientHello请求。在这一步，客户端主要向服务器提供以下信息。</p>
+<blockquote>
+<ol>
+<li>支持的协议版本，比如TLS 1.2</li>
+<li>一个客户端生成的随机数，稍后用于生成”会话密钥”</li>
+<li>支持的加密套件候选列表，比如RSA公钥加密</li>
+<li>支持的压缩方法</li>
+</ol>
+</blockquote>
+<p><img src="https://upload-images.jianshu.io/upload_images/128529-0bcae5de99b7d6e7.jpg" alt=""></p>
+<p>这里需要注意的是，客户端发送的信息之中不包括服务器的域名。也就是说，理论上服务器只能包含一个网站，否则会分不清应该向客户端提供哪一个网站的数字证书。这就是为什么通常一台服务器只能有一张数字证书的原因。</p>
+<p>在2006年，TLS协议加入了一个<a href="http://tools.ietf.org/html/rfc4366" target="_blank" rel="noopener">Server Name Indication</a>扩展，允许客户端向服务器提供它所请求的域名。</p>
+<h3 id="服务器回应（SeverHello）"><a href="#服务器回应（SeverHello）" class="headerlink" title="服务器回应（SeverHello）"></a>服务器回应（SeverHello）</h3><p>服务器收到客户端请求后，向客户端发出回应，这叫做SeverHello。</p>
+<p>从Server Hello到Server Done，有些服务端的实现是每条单独发送，有服务端实现是合并到一起发送。Sever Hello和Server Done都是只有头没有内容的数据。</p>
+<p>服务器的回应包含以下内容。</p>
+<blockquote>
+<ol>
+<li>确认使用的加密通信协议版本，比如TLS1.2。如果浏览器与服务器支持的版本不一致，服务器关闭加密通信</li>
+<li>一个服务器生成的随机数，稍后用于生成”会话密钥”</li>
+<li>确认使用的加密套件，比如RSA公钥加密</li>
+<li>服务器证书</li>
+</ol>
+</blockquote>
+<p><img src="https://upload-images.jianshu.io/upload_images/128529-aab67532c3b39353.jpg" alt=""></p>
+<h4 id="Certificate"><a href="#Certificate" class="headerlink" title="Certificate"></a>Certificate</h4><p>服务端将自己的证书下发给客户端，让客户端验证自己的身份，客户端验证通过后取出证书中的公钥。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/128529-86995b047bdca4fb.jpg" alt=""></p>
+<h4 id="Server-Key-Exchange"><a href="#Server-Key-Exchange" class="headerlink" title="Server Key Exchange"></a>Server Key Exchange</h4><p>在Diffie-Hellman中，客户端无法自行计算premaster。这需要双方一起参与进行计算，因此客户端需要从服务器获取DH公钥。 在ephemeral DH/EDH中，该公钥不在证书中。因此服务器必须在单独的消息中向客户端发送其临时DH公钥，以便客户端可以计算premaster（双方都需要知道premaster，因为这是他们得出主密钥的方式）。这时就要求客户端发送一个 Server Key Exchange。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/128529-d490081356459e7d.jpg" alt=""></p>
+<h4 id="Cerficate-Request"><a href="#Cerficate-Request" class="headerlink" title="Cerficate Request"></a>Cerficate Request</h4><p>除了上面这些信息，如果服务器需要确认客户端的身份，就会再包含一项请求 Cerficate Request ，要求客户端提供”客户端证书”。比如，金融机构往往只允许认证客户连入自己的网络，就会向正式客户提供USB密钥，里面就包含了一张客户端证书。</p>
+<h4 id="Server-Hello-Done"><a href="#Server-Hello-Done" class="headerlink" title="Server Hello Done"></a>Server Hello Done</h4><p>通知客户端 Server Hello 过程结束。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/128529-f556b00b34e1752b.jpg" alt=""></p>
+<h3 id="客户端回应（Certificate-Verify）"><a href="#客户端回应（Certificate-Verify）" class="headerlink" title="客户端回应（Certificate Verify）"></a>客户端回应（Certificate Verify）</h3><p>客户端收到服务器回应以后，首先验证服务器证书Certificate Verify，这些证书通常基于X.509。<u>如果证书不是可信机构颁布、或者证书中的域名与实际域名不一致、或者证书已经过期</u>，就会向访问者显示一个警告，由其选择是否还要继续通信。</p>
+<p>如果证书没有问题，客户端就会从证书中取出服务器的公钥。然后，向服务器发送下面三项信息。</p>
+<blockquote>
+<ol>
+<li>一个随机数。该随机数用服务器公钥加密生成Pre-Master Key   //根据服务端公钥生成随机数！</li>
+<li>编码改变通知，表示随后的信息都将用双方商定的加密方法和密钥发送</li>
+<li>客户端握手结束通知，表示客户端的握手阶段已经结束。这一项同时也是前面发送的所有内容的hash值，用来供服务器校验</li>
+</ol>
+</blockquote>
+<h4 id="Client-Key-Exchange"><a href="#Client-Key-Exchange" class="headerlink" title="Client Key Exchange"></a>Client Key Exchange</h4><p>上面的随机数，是整个握手阶段出现的第三个随机数，它是客户端使用一些加密算法(例如RSA, Diffie-Hellman)产生一个48个字节的key，这个key叫 <code>pre-master secret</code>，也被称作 <code>pre-master key</code>。服务端用私钥解密这个PreMaster Key得到客户端发送的随机数。至此客户端和服务器就同时有了三个随机数，接着双方就用事先商定的算法各自生成本次会话所用的”会话密钥”。</p>
+<p><em>为什么一定要用三个随机数来生成”会话密钥”呢？</em></p>
+<blockquote>
+<p>不管是客户端还是服务器，都需要随机数，这样生成的密钥才不会每次都一样。由于SSL协议中证书是静态的，因此十分有必要引入一种随机因素来保证协商出来的密钥的随机性。</p>
+<p>对于RSA密钥交换算法来说，pre-master-key本身就是一个随机数，再加上hello消息中的随机，三个随机数通过一个密钥导出器最终导出一个对称密钥。</p>
+<p>pre master的存在在于SSL协议不信任每个主机都能产生完全随机的随机数，如果随机数不随机，那么pre master secret就有可能被猜出来，那么仅使用pre master secret作为密钥就不合适了，因此必须引入新的随机因素，那么客户端和服务器加上pre master secret三个随机数一同生成的密钥就不容易被猜出了，一个伪随机可能完全不随机，可是是三个伪随机就十分接近随机了。</p>
+</blockquote>
+<p>客户端将Pre-Master Key传给服务端的过程如下：<br><img src="https://upload-images.jianshu.io/upload_images/128529-8644f5444f48f969.jpg" alt=""></p>
+<h4 id="Change-Cipher-Spec-Client"><a href="#Change-Cipher-Spec-Client" class="headerlink" title="Change Cipher Spec(Client)"></a>Change Cipher Spec(Client)</h4><p>ChangeCipherSpec是一个独立的协议，体现在数据包中就是一个字节的数据，用于告知服务端，客户端已经切换到之前协商好的加密套件（Cipher Suite）的状态，准备使用之前协商好的加密套件加密数据并传输了。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/128529-4e85e83831670580.jpg" alt=""></p>
+<h4 id="Encrypted-Handshake-Message-Client"><a href="#Encrypted-Handshake-Message-Client" class="headerlink" title="Encrypted Handshake Message(Client)"></a>Encrypted Handshake Message(Client)</h4><p>然后，客户端会使用之前协商好的加密套件和Session Secret加密前面的握手消息生成的摘要数据，并传送给服务端，此数据是为了在正式传输应用数据之前对刚刚握手建立起来的加解密通道进行验证。服务端接收后会用会话密钥解密，能解出来说明前面协商出来的密钥是一致的。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/128529-936e08831386ec26.jpg" alt=""></p>
+<p>～此外，如果前一步，服务器要求客户端证书，客户端会在这一步发送证书及相关信息Client Key Exchange。～</p>
+<h3 id="服务器的最后回应（Server-Finish）"><a href="#服务器的最后回应（Server-Finish）" class="headerlink" title="服务器的最后回应（Server Finish）"></a>服务器的最后回应（Server Finish）</h3><p>服务器收到客户端的第三个随机数pre-master key之后，计算生成本次会话所用的”会话密钥”。然后，向客户端最后发送下面信息。</p>
+<blockquote>
+<ol>
+<li>编码改变通知，表示随后的信息都将用双方商定的加密方法和密钥发送。</li>
+<li>服务器握手结束通知，表示服务器的握手阶段已经结束。这一项同时也是前面发送的所有内容的hash值，用来供客户端校验。</li>
+</ol>
+</blockquote>
+<h4 id="Change-Cipher-Spec-Server"><a href="#Change-Cipher-Spec-Server" class="headerlink" title="Change Cipher Spec(Server)"></a>Change Cipher Spec(Server)</h4><p>一切准备好之后，会给客户端发送一个 ChangeCipherSpec，告知客户端已经切换到协商过的加密套件状态，准备使用加密套件和 Session Secret加密数据了。</p>
+<h4 id="Encrypted-Handshake-Message-Server"><a href="#Encrypted-Handshake-Message-Server" class="headerlink" title="Encrypted Handshake Message(Server)"></a>Encrypted Handshake Message(Server)</h4><p>服务端也会使用Session Secret加密握手过程的消息生成的摘要消息，并发送给客户端，以验证之前通过握手建立起来的加解密通道是否成功。这是服务端发出的第一条加密消息。客户端接收后会用密钥解密，能解出来说明协商的密钥是一致的。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/128529-98cd8557d2818a3a.jpg" alt=""></p>
+<p>至此，整个握手阶段全部结束。接下来，客户端与服务器进入加密通信，就完全是使用普通的HTTP协议，只不过用”会话密钥”加密内容。</p>
+<h2 id="双向证书验证"><a href="#双向证书验证" class="headerlink" title="双向证书验证"></a>双向证书验证</h2><p>下图是双向证书验证的过程。<br><img src="https://upload.wikimedia.org/wikipedia/commons/a/ae/SSL_handshake_with_two_way_authentication_with_certificates.svg" alt=""></p>
+<h2 id="密钥协商和加密算法"><a href="#密钥协商和加密算法" class="headerlink" title="密钥协商和加密算法"></a>密钥协商和加密算法</h2><p>在客户端和服务器开始交换TLS所保护的加密信息之前，他们必须安全地交换或协定加密密钥和加密数据时要使用的密码。<u>用于<strong>密钥交换</strong>的方法包括</u>：使用RSA算法生成公钥和私钥（在TLS 握手协议中被称为<code>TLS_RSA</code>），Diffie-Hellman（<code>TLS_DH</code>），ephemeral Diffie-Hellman（<code>TLS_DHE</code>），椭圆曲线迪菲-赫尔曼（<code>TLS_ECDH</code>），ephemeral elliptic-curve Diffie-Hellman（<code>TLS_ECDHE</code>），anonymous Diffie-Hellman（<code>TLS_DH_anon</code>），预共享密钥/pre-shared key（<code>TLS_PSK</code>）和 Secure Remote Password（<code>TLS_SRP</code>）。</p>
+<p>TLS_DH_anon和TLS_ECDH_anon的密钥协商协议不能验证服务器或用户，因为易受中间人攻击因此很少使用。只有<code>TLS_DHE</code>和<code>TLS_ECDHE</code>提供<strong>前向保密</strong>能力。</p>
+<h3 id="基于-RSA-的密钥协商"><a href="#基于-RSA-的密钥协商" class="headerlink" title="基于 RSA 的密钥协商"></a>基于 RSA 的密钥协商</h3><p>RSA密钥交换中，RSA起的作用是key transmission，也就是说，用于产生session key的“种子”是由客户端决定，用服务器的公钥加密并再次传输到服务器端。（TLS Record Layer: 用密钥k进行加密））</p>
+<p>协商的过程大致如下：</p>
+<ol>
+<li>客户端连上服务端</li>
+<li>服务端发送其证书给客户端</li>
+<li>客户端验证该证书的有效性</li>
+<li>客户端从证书中取出公钥</li>
+<li>客户端生成一个随机密钥 k，并用这个公钥加密得到 k’</li>
+<li>客户端把 k’ 发送给服务端</li>
+<li>服务端收到 k’ 后用自己的私钥解密得到 k</li>
+<li>此时双方都得到了密钥 k，协商完成。</li>
+</ol>
+<p>为了防止RSA密钥协商时的假冒身份，就需要RSA结合数字证书一起使用。</p>
+<p>基于RSA的密钥协商的过程是早期的SSLv2使用的唯一种密钥协商机制。</p>
+<h3 id="基于-DH-的密钥协商"><a href="#基于-DH-的密钥协商" class="headerlink" title="基于 DH 的密钥协商"></a>基于 DH 的密钥协商</h3><p>Diffie–Hellman（DH）密钥交换中，DH起的作用是key exchange，也就是说，用于产生session key的“种子”，是客户端和服务器都参与了的。这是因为DH可以在通讯双方在完全没有对方任何预先信息的条件下通过不安全信道创建一个双方共享的私有密钥。</p>
+<p>协商的过程大致如下：</p>
+<ol>
+<li>客户端先连上服务端</li>
+<li>服务端生成一个随机数 s 作为自己的私钥，然后根据算法参数计算出公钥 S（算法参数通常是固定的）</li>
+<li>服务端使用某种签名算法（RSA、DSA、ECDSA）把『算法参数（模数 p，基数 g）和服务端公钥 S』作为一个整体进行签名</li>
+<li>服务端把『算法参数（模数 p，基数 g）、服务端公钥S、签名』发送给客户端</li>
+<li>客户端收到后验证签名是否有效</li>
+<li>客户端生成一个随机数 c 作为自己的私钥，然后根据算法参数计算出公钥 C</li>
+<li>客户端把 C 发送给服务端</li>
+<li>客户端和服务端（根据上述 DH 算法）各自计算出 k 作为会话密钥</li>
+</ol>
+<p>由于DH 算法本身有不支持认证的缺点。就是说：它虽然可以对抗“偷窥”，却无法对抗“篡改”，自然也就无法对抗“中间人攻击/MITM”。因此DH 需要与其它签名算法（如 RSA、DSA、ECDSA）配合，靠签名算法帮忙来进行身份认证。当 DH 与 RSA 配合使用，称之为<code>DH-RSA</code>，与 DSA 配合则称为<code>DH-DSA</code>，以此类推。如果 DH没有配合某种签名算法，则称为“DH-ANON”，此时它会遭遇“中间人攻击/MITM”。。</p>
+<p>DH 算法有一个变种，称之为 ECDH（全称是“Elliptic Curve Diffie-Hellman”）。它与 DH 类似，差别在于：DH 依赖的是求解“离散对数问题”的困难；ECDH 依赖的是求解“椭圆曲线离散对数问题”的困难。另外，ECDH 跟 DH 一样，也是“无认证”的，同样需要跟其它签名算法配合使用。</p>
+<p>由于DH 和 ECDH的密钥是持久的（静态的）。就是说通讯双方生成各自的密钥之后，就长时间用下去。但是这样存在安全隐患，就是无法做到<a href="https://en.wikipedia.org/wiki/Forward_secrecy" target="_blank" rel="noopener">前向保密</a>。为了达到“前向保密”，就是每次会话都要重新协商一次密钥（都随机生成私钥），用完后就丢弃掉。就出现了针对上述两个算法的改良版本DHE 和 ECDHE。</p>
+<h3 id="基于-PSK-的密钥协商"><a href="#基于-PSK-的密钥协商" class="headerlink" title="基于 PSK 的密钥协商"></a>基于 PSK 的密钥协商</h3><p>PSK （Pre-Shared Key），预共享密钥。就是在通信前就预先让通信双方共享一些密钥（通常是对称加密的密钥）。这样的好处是：不依赖公钥体系；不涉及非对称加密。</p>
+<p>由于通信双方已经预先配置了若干共享的密码。为了标识多个密钥，给每一个密钥定义一个唯一的 ID。在协商时，客户端把自己选好的密钥的 ID 告诉服务端，服务端在自己的密钥池子中找到这个 ID，就用对应的密钥与客户端通讯；否则就报错并中断连接。</p>
+<p>PSK 可以单独使用，也可以搭配签名算法一起使用。</p>
+<ul>
+<li>单独使用：协议初始化/握手阶段的末尾，双方都会向对方发送一段“验证性的密文”，这段密文用各自的会话密钥进行<strong>对称加密</strong>，如果双方的会话密钥不一致，这一步就会失败，进而导致握手失败，连接终止。</li>
+<li>搭配签名算法：如果攻击者篡改了协商过程中传送的密钥 ID，验证签名会失败.    //PSK-RSA</li>
+</ul>
+<blockquote>
+<p>由于 PSK 与 RSA 具有某种相似性，既可以“密钥协商”，也可以“身份认证”。因此 PSK 也可以跟 DH（及其变种）进行组合。例如：DHE-PSK、ECDHE-PSK</p>
+</blockquote>
+<h3 id="基于-SRP-的密钥协商"><a href="#基于-SRP-的密钥协商" class="headerlink" title="基于 SRP 的密钥协商"></a>基于 SRP 的密钥协商</h3><p>SRP，Secure Remote Password protocol。它和PSK类似，只不过 client/server 双方共享的是比较人性化的密码（password）而不是密钥（key）。该算法采用了一些机制（盐/salt、随机数）来防范“嗅探/sniffer”或“字典猜解攻击”或“重放攻击”。</p>
+<h3 id="安全的密钥交换协议"><a href="#安全的密钥交换协议" class="headerlink" title="安全的密钥交换协议"></a>安全的密钥交换协议</h3><p>在TLS1.3中推荐使用：</p>
+<ul>
+<li>DHE-RSA（具有前向安全性）</li>
+<li>ECDHE-RSA（具有前向安全性）</li>
+<li>ECDHE-ECDSA（具有前向安全性）</li>
+</ul>
+<h3 id="安全的加密"><a href="#安全的加密" class="headerlink" title="安全的加密"></a>安全的加密</h3><p>在TLS1.3中推荐使用：</p>
+<ul>
+<li>AES GCM（块密码）</li>
+<li>AES CCM（块密码）</li>
+<li>ChaCha20-Poly1305（流密码）</li>
+</ul>
+<h3 id="数据完整性"><a href="#数据完整性" class="headerlink" title="数据完整性"></a>数据完整性</h3><p>在TLS1.3中推荐使用：</p>
+<ul>
+<li>AEAD</li>
+</ul>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://en.wikipedia.org/wiki/HTTPS" target="_blank" rel="noopener">HTTPS</a></p>
+<p><a href="https://en.wikipedia.org/wiki/Transport_Layer_Security" target="_blank" rel="noopener">Transport Layer Security</a></p>
+<p><a href="https://program-think.blogspot.com/2016/09/https-ssl-tls-3.html" target="_blank" rel="noopener">扫盲 HTTPS 和 SSL/TLS 协议3：密钥交换（密钥协商）算法及其原理</a></p>
+<p><a href="http://www.ruanyifeng.com/blog/2014/02/ssl_tls.html" target="_blank" rel="noopener">SSL/TLS协议运行机制的概述</a></p>
+<p><a href="http://seanlook.com/2015/01/07/tls-ssl/" target="_blank" rel="noopener">SSL/TLS原理详解</a></p>
+<p><a href="http://insights.thoughtworkers.org/cipher-behind-https/" target="_blank" rel="noopener">http://insights.thoughtworkers.org/cipher-behind-https/</a></p>
+<p><a href="http://honglu.me/2016/01/13/HTTPS%E8%AF%A6%E8%A7%A3/" target="_blank" rel="noopener">http://honglu.me/2016/01/13/HTTPS%E8%AF%A6%E8%A7%A3/</a></p>
+<p><a href="https://www.jianshu.com/p/7158568e4867" target="_blank" rel="noopener">SSL/TLS 握手过程详解</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2020/04/11/OpenID%20Connect%E5%9F%BA%E7%A1%80/" rel="next" title="OpenID Connect基础">
+      OpenID Connect基础 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#SSL-TLS协议"><span class="nav-number">1.</span> <span class="nav-text">SSL&#x2F;TLS协议</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#握手过程"><span class="nav-number">2.</span> <span class="nav-text">握手过程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#客户端发出请求（ClientHello）"><span class="nav-number">2.1.</span> <span class="nav-text">客户端发出请求（ClientHello）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#服务器回应（SeverHello）"><span class="nav-number">2.2.</span> <span class="nav-text">服务器回应（SeverHello）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Certificate"><span class="nav-number">2.2.1.</span> <span class="nav-text">Certificate</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Server-Key-Exchange"><span class="nav-number">2.2.2.</span> <span class="nav-text">Server Key Exchange</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Cerficate-Request"><span class="nav-number">2.2.3.</span> <span class="nav-text">Cerficate Request</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Server-Hello-Done"><span class="nav-number">2.2.4.</span> <span class="nav-text">Server Hello Done</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#客户端回应（Certificate-Verify）"><span class="nav-number">2.3.</span> <span class="nav-text">客户端回应（Certificate Verify）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Client-Key-Exchange"><span class="nav-number">2.3.1.</span> <span class="nav-text">Client Key Exchange</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Change-Cipher-Spec-Client"><span class="nav-number">2.3.2.</span> <span class="nav-text">Change Cipher Spec(Client)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Encrypted-Handshake-Message-Client"><span class="nav-number">2.3.3.</span> <span class="nav-text">Encrypted Handshake Message(Client)</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#服务器的最后回应（Server-Finish）"><span class="nav-number">2.4.</span> <span class="nav-text">服务器的最后回应（Server Finish）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Change-Cipher-Spec-Server"><span class="nav-number">2.4.1.</span> <span class="nav-text">Change Cipher Spec(Server)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Encrypted-Handshake-Message-Server"><span class="nav-number">2.4.2.</span> <span class="nav-text">Encrypted Handshake Message(Server)</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#双向证书验证"><span class="nav-number">3.</span> <span class="nav-text">双向证书验证</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#密钥协商和加密算法"><span class="nav-number">4.</span> <span class="nav-text">密钥协商和加密算法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#基于-RSA-的密钥协商"><span class="nav-number">4.1.</span> <span class="nav-text">基于 RSA 的密钥协商</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#基于-DH-的密钥协商"><span class="nav-number">4.2.</span> <span class="nav-text">基于 DH 的密钥协商</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#基于-PSK-的密钥协商"><span class="nav-number">4.3.</span> <span class="nav-text">基于 PSK 的密钥协商</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#基于-SRP-的密钥协商"><span class="nav-number">4.4.</span> <span class="nav-text">基于 SRP 的密钥协商</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#安全的密钥交换协议"><span class="nav-number">4.5.</span> <span class="nav-text">安全的密钥交换协议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#安全的加密"><span class="nav-number">4.6.</span> <span class="nav-text">安全的加密</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据完整性"><span class="nav-number">4.7.</span> <span class="nav-text">数据完整性</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">5.</span> <span class="nav-text">参考</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">wysec</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wysec</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
