@@ -496,7 +496,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2020-04-19 13:33:35" itemprop="dateModified" datetime="2020-04-19T13:33:35+08:00">2020-04-19</time>
+                <time title="修改时间：2020-04-20 21:12:39" itemprop="dateModified" datetime="2020-04-20T21:12:39+08:00">2020-04-20</time>
               </span>
 
           
@@ -544,11 +544,11 @@
 <li>支持的压缩方法</li>
 </ol>
 </blockquote>
-<p><img src="https://upload-images.jianshu.io/upload_images/128529-0bcae5de99b7d6e7.jpg" alt=""></p>
+<p><img src="/images/https_client_hello.png" alt=""></p>
 <p>这里需要注意的是，客户端发送的信息之中不包括服务器的域名。也就是说，理论上服务器只能包含一个网站，否则会分不清应该向客户端提供哪一个网站的数字证书。这就是为什么通常一台服务器只能有一张数字证书的原因。</p>
 <p>在2006年，TLS协议加入了一个<a href="http://tools.ietf.org/html/rfc4366" target="_blank" rel="noopener">Server Name Indication</a>扩展，允许客户端向服务器提供它所请求的域名。</p>
 <h3 id="服务器回应（SeverHello）"><a href="#服务器回应（SeverHello）" class="headerlink" title="服务器回应（SeverHello）"></a>服务器回应（SeverHello）</h3><p>服务器收到客户端请求后，向客户端发出回应，这叫做SeverHello。</p>
-<p>从Server Hello到Server Done，有些服务端的实现是每条单独发送，有服务端实现是合并到一起发送。Sever Hello和Server Done都是只有头没有内容的数据。</p>
+<p>从Server Hello到Server Done，<u>有些服务端的实现是每条单独发送，有服务端实现是合并到一起发送</u>。Sever Hello和Server Done都是只有头没有内容的数据。</p>
 <p>服务器的回应包含以下内容。</p>
 <blockquote>
 <ol>
@@ -558,47 +558,62 @@
 <li>服务器证书</li>
 </ol>
 </blockquote>
-<p><img src="https://upload-images.jianshu.io/upload_images/128529-aab67532c3b39353.jpg" alt=""></p>
-<h4 id="Certificate"><a href="#Certificate" class="headerlink" title="Certificate"></a>Certificate</h4><p>服务端将自己的证书下发给客户端，让客户端验证自己的身份，客户端验证通过后取出证书中的公钥。</p>
-<p><img src="https://upload-images.jianshu.io/upload_images/128529-86995b047bdca4fb.jpg" alt=""></p>
-<h4 id="Server-Key-Exchange"><a href="#Server-Key-Exchange" class="headerlink" title="Server Key Exchange"></a>Server Key Exchange</h4><p>在Diffie-Hellman中，客户端无法自行计算premaster。这需要双方一起参与进行计算，因此客户端需要从服务器获取DH公钥。 在ephemeral DH/EDH中，该公钥不在证书中。因此服务器必须在单独的消息中向客户端发送其临时DH公钥，以便客户端可以计算premaster（双方都需要知道premaster，因为这是他们得出主密钥的方式）。这时就要求客户端发送一个 Server Key Exchange。</p>
-<p><img src="https://upload-images.jianshu.io/upload_images/128529-d490081356459e7d.jpg" alt=""></p>
-<h4 id="Cerficate-Request"><a href="#Cerficate-Request" class="headerlink" title="Cerficate Request"></a>Cerficate Request</h4><p>除了上面这些信息，如果服务器需要确认客户端的身份，就会再包含一项请求 Cerficate Request ，要求客户端提供”客户端证书”。比如，金融机构往往只允许认证客户连入自己的网络，就会向正式客户提供USB密钥，里面就包含了一张客户端证书。</p>
-<h4 id="Server-Hello-Done"><a href="#Server-Hello-Done" class="headerlink" title="Server Hello Done"></a>Server Hello Done</h4><p>通知客户端 Server Hello 过程结束。</p>
-<p><img src="https://upload-images.jianshu.io/upload_images/128529-f556b00b34e1752b.jpg" alt=""></p>
+<p><img src="/images/https_server_hello++.png" alt=""></p>
+<p>此报文中包括以下3个内容：</p>
+<ul>
+<li>Server Hello：服务端确认协议版本、生成的随机数、确认加密套件。</li>
+<li>Certificate：服务端将自己的证书下发给客户端，让客户端验证自己的身份，客户端验证通过后取出证书中的公钥。</li>
+<li>Server Hello Done：服务端通知客户端 Server Hello 过程结束。</li>
+</ul>
+<p>此外，此阶段还可能涉及以下2个内容：</p>
+<ul>
+<li><p>Server Key Exchange：在Diffie-Hellman中，客户端无法自行计算pre-master。这需要双方一起参与进行计算，因此客户端需要从服务器获取DH公钥。 在ephemeral DH/EDH中，该公钥不在证书中。因此服务器必须在单独的消息中向客户端发送其临时DH公钥，以便客户端可以计算premaster（双方都需要知道premaster，因为这是他们得出主密钥的方式）。这时就要求客户端发送一个 Server Key Exchange。</p>
+</li>
+<li><p>Cerficate Request：除了上面这些信息，如果服务器需要确认客户端的身份，就会再包含一项请求 Cerficate Request ，要求客户端提供”客户端证书”。比如，金融机构往往只允许认证客户连入自己的网络，就会向正式客户提供USB密钥，里面就包含了一张客户端证书。</p>
+</li>
+</ul>
 <h3 id="客户端回应（Certificate-Verify）"><a href="#客户端回应（Certificate-Verify）" class="headerlink" title="客户端回应（Certificate Verify）"></a>客户端回应（Certificate Verify）</h3><p>客户端收到服务器回应以后，首先验证服务器证书Certificate Verify，这些证书通常基于X.509。<u>如果证书不是可信机构颁布、或者证书中的域名与实际域名不一致、或者证书已经过期</u>，就会向访问者显示一个警告，由其选择是否还要继续通信。</p>
 <p>如果证书没有问题，客户端就会从证书中取出服务器的公钥。然后，向服务器发送下面三项信息。</p>
 <blockquote>
 <ol>
-<li>一个随机数。该随机数用服务器公钥加密生成Pre-Master Key   //根据服务端公钥生成随机数！</li>
+<li>一个随机数。该随机数用服务器公钥加密生成PreMaster Key   //根据服务端公钥生成随机数！</li>
 <li>编码改变通知，表示随后的信息都将用双方商定的加密方法和密钥发送</li>
 <li>客户端握手结束通知，表示客户端的握手阶段已经结束。这一项同时也是前面发送的所有内容的hash值，用来供服务器校验</li>
 </ol>
 </blockquote>
-<h4 id="Client-Key-Exchange"><a href="#Client-Key-Exchange" class="headerlink" title="Client Key Exchange"></a>Client Key Exchange</h4><p>上面的随机数，是整个握手阶段出现的第三个随机数，它是客户端使用一些加密算法(例如RSA, Diffie-Hellman)产生一个48个字节的key，这个key叫 <code>pre-master secret</code>，也被称作 <code>pre-master key</code>。服务端用私钥解密这个PreMaster Key得到客户端发送的随机数。至此客户端和服务器就同时有了三个随机数，接着双方就用事先商定的算法各自生成本次会话所用的”会话密钥”。</p>
+<p><img src="/images/https_client_key_exchange.png" alt=""></p>
+<p>此报文中包括以下3个内容：</p>
+<ul>
+<li>Client Key Exchange：上面的随机数，是整个握手阶段出现的第三个随机数，它是客户端使用一些加密算法(例如RSA, Diffie-Hellman)产生一个48个字节的key，这个key叫 <code>PreMaster Secret</code>，也被称作 <code>PreMaster Key</code>。服务端用私钥解密这个PreMaster Key得到客户端发送的随机数。至此客户端和服务器就同时有了三个随机数，接着双方就用事先商定的算法各自生成本次会话所用的”会话密钥”。</li>
+</ul>
 <p><em>为什么一定要用三个随机数来生成”会话密钥”呢？</em></p>
 <blockquote>
 <p>不管是客户端还是服务器，都需要随机数，这样生成的密钥才不会每次都一样。由于SSL协议中证书是静态的，因此十分有必要引入一种随机因素来保证协商出来的密钥的随机性。</p>
-<p>对于RSA密钥交换算法来说，pre-master-key本身就是一个随机数，再加上hello消息中的随机，三个随机数通过一个密钥导出器最终导出一个对称密钥。</p>
-<p>pre master的存在在于SSL协议不信任每个主机都能产生完全随机的随机数，如果随机数不随机，那么pre master secret就有可能被猜出来，那么仅使用pre master secret作为密钥就不合适了，因此必须引入新的随机因素，那么客户端和服务器加上pre master secret三个随机数一同生成的密钥就不容易被猜出了，一个伪随机可能完全不随机，可是是三个伪随机就十分接近随机了。</p>
+<p>对于RSA密钥交换算法来说，PreMaster Secret本身就是一个随机数，再加上hello消息中的随机，三个随机数通过一个密钥导出器最终导出一个对称密钥。</p>
+<p>PreMaster Secret的存在在于SSL协议不信任每个主机都能产生完全随机的随机数，如果随机数不随机，那么PreMaster Secret就有可能被猜出来，那么仅使用PreMaster Secret作为密钥就不合适了，因此必须引入新的随机因素，那么客户端和服务器加上PreMaster Secret三个随机数一同生成的密钥就不容易被猜出了，一个伪随机可能完全不随机，可是是三个伪随机就十分接近随机了。</p>
 </blockquote>
-<p>客户端将Pre-Master Key传给服务端的过程如下：<br><img src="https://upload-images.jianshu.io/upload_images/128529-8644f5444f48f969.jpg" alt=""></p>
-<h4 id="Change-Cipher-Spec-Client"><a href="#Change-Cipher-Spec-Client" class="headerlink" title="Change Cipher Spec(Client)"></a>Change Cipher Spec(Client)</h4><p>ChangeCipherSpec是一个独立的协议，体现在数据包中就是一个字节的数据，用于告知服务端，客户端已经切换到之前协商好的加密套件（Cipher Suite）的状态，准备使用之前协商好的加密套件加密数据并传输了。</p>
-<p><img src="https://upload-images.jianshu.io/upload_images/128529-4e85e83831670580.jpg" alt=""></p>
-<h4 id="Encrypted-Handshake-Message-Client"><a href="#Encrypted-Handshake-Message-Client" class="headerlink" title="Encrypted Handshake Message(Client)"></a>Encrypted Handshake Message(Client)</h4><p>然后，客户端会使用之前协商好的加密套件和Session Secret加密前面的握手消息生成的摘要数据，并传送给服务端，此数据是为了在正式传输应用数据之前对刚刚握手建立起来的加解密通道进行验证。服务端接收后会用会话密钥解密，能解出来说明前面协商出来的密钥是一致的。</p>
-<p><img src="https://upload-images.jianshu.io/upload_images/128529-936e08831386ec26.jpg" alt=""></p>
-<p>～此外，如果前一步，服务器要求客户端证书，客户端会在这一步发送证书及相关信息Client Key Exchange。～</p>
-<h3 id="服务器的最后回应（Server-Finish）"><a href="#服务器的最后回应（Server-Finish）" class="headerlink" title="服务器的最后回应（Server Finish）"></a>服务器的最后回应（Server Finish）</h3><p>服务器收到客户端的第三个随机数pre-master key之后，计算生成本次会话所用的”会话密钥”。然后，向客户端最后发送下面信息。</p>
+<ul>
+<li><p>Change Cipher Spec(Client)：ChangeCipherSpec是一个独立的协议，体现在数据包中就是一个字节的数据，用于告知服务端，客户端已经切换到之前协商好的加密套件（Cipher Suite）的状态，准备使用之前协商好的加密套件加密数据并传输了。</p>
+</li>
+<li><p>Encrypted Handshake Message(Client)：然后，客户端会使用之前协商好的加密套件和Session Secret加密前面的握手消息生成的摘要数据，并传送给服务端，此数据是为了在正式传输应用数据之前对刚刚握手建立起来的加解密通道进行验证。服务端接收后会用会话密钥解密，能解出来说明前面协商出来的密钥是一致的。</p>
+</li>
+</ul>
+<p><em>此外，如果前一步，服务器要求客户端证书，客户端会在这一步发送证书及相关信息Client Key Exchange。</em></p>
+<h3 id="服务器的最后回应（Server-Finish）"><a href="#服务器的最后回应（Server-Finish）" class="headerlink" title="服务器的最后回应（Server Finish）"></a>服务器的最后回应（Server Finish）</h3><p>服务器收到客户端的第三个随机数PreMaster Secret之后，计算生成本次会话所用的”会话密钥”。然后，向客户端最后发送下面信息。</p>
 <blockquote>
 <ol>
 <li>编码改变通知，表示随后的信息都将用双方商定的加密方法和密钥发送。</li>
 <li>服务器握手结束通知，表示服务器的握手阶段已经结束。这一项同时也是前面发送的所有内容的hash值，用来供客户端校验。</li>
 </ol>
 </blockquote>
-<h4 id="Change-Cipher-Spec-Server"><a href="#Change-Cipher-Spec-Server" class="headerlink" title="Change Cipher Spec(Server)"></a>Change Cipher Spec(Server)</h4><p>一切准备好之后，会给客户端发送一个 ChangeCipherSpec，告知客户端已经切换到协商过的加密套件状态，准备使用加密套件和 Session Secret加密数据了。</p>
-<h4 id="Encrypted-Handshake-Message-Server"><a href="#Encrypted-Handshake-Message-Server" class="headerlink" title="Encrypted Handshake Message(Server)"></a>Encrypted Handshake Message(Server)</h4><p>服务端也会使用Session Secret加密握手过程的消息生成的摘要消息，并发送给客户端，以验证之前通过握手建立起来的加解密通道是否成功。这是服务端发出的第一条加密消息。客户端接收后会用密钥解密，能解出来说明协商的密钥是一致的。</p>
-<p><img src="https://upload-images.jianshu.io/upload_images/128529-98cd8557d2818a3a.jpg" alt=""></p>
-<p>至此，整个握手阶段全部结束。接下来，客户端与服务器进入加密通信，就完全是使用普通的HTTP协议，只不过用”会话密钥”加密内容。</p>
+<p><img src="/images/https_server_finish.png" alt=""></p>
+<p>此报文中包括以下2个内容：</p>
+<ul>
+<li>Change Cipher Spec(Server)：一切准备好之后，会给客户端发送一个 ChangeCipherSpec，告知客户端已经切换到协商过的加密套件状态，准备使用加密套件和 Session Secret加密数据了。</li>
+<li>Encrypted Handshake Message(Server)：服务端也会使用Session Secret加密握手过程的消息生成的摘要消息，并发送给客户端，以验证之前通过握手建立起来的加解密通道是否成功。这是服务端发出的第一条加密消息。客户端接收后会用密钥解密，能解出来说明协商的密钥是一致的。</li>
+</ul>
+<p>至此，整个握手阶段全部结束。接下来，客户端与服务器进入加密通信，就完全是使用普通的HTTP协议，只不过用”会话密钥”加密内容。下图就是使用会话密钥加密数据的示例。</p>
+<p><img src="/images/http_over_tls.png" alt=""></p>
 <h2 id="双向证书验证"><a href="#双向证书验证" class="headerlink" title="双向证书验证"></a>双向证书验证</h2><p>下图是双向证书验证的过程。<br><img src="https://upload.wikimedia.org/wikipedia/commons/a/ae/SSL_handshake_with_two_way_authentication_with_certificates.svg" alt=""></p>
 <h2 id="密钥协商和加密算法"><a href="#密钥协商和加密算法" class="headerlink" title="密钥协商和加密算法"></a>密钥协商和加密算法</h2><p>在客户端和服务器开始交换TLS所保护的加密信息之前，他们必须安全地交换或协定加密密钥和加密数据时要使用的密码。<u>用于<strong>密钥交换</strong>的方法包括</u>：使用RSA算法生成公钥和私钥（在TLS 握手协议中被称为<code>TLS_RSA</code>），Diffie-Hellman（<code>TLS_DH</code>），ephemeral Diffie-Hellman（<code>TLS_DHE</code>），椭圆曲线迪菲-赫尔曼（<code>TLS_ECDH</code>），ephemeral elliptic-curve Diffie-Hellman（<code>TLS_ECDHE</code>），anonymous Diffie-Hellman（<code>TLS_DH_anon</code>），预共享密钥/pre-shared key（<code>TLS_PSK</code>）和 Secure Remote Password（<code>TLS_SRP</code>）。</p>
 <p>TLS_DH_anon和TLS_ECDH_anon的密钥协商协议不能验证服务器或用户，因为易受中间人攻击因此很少使用。只有<code>TLS_DHE</code>和<code>TLS_ECDHE</code>提供<strong>前向保密</strong>能力。</p>
